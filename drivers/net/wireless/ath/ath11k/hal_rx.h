@@ -414,9 +414,9 @@ struct hal_rx_mpdu_info {
 } __packed;
 
 struct hal_rx_mpdu_info_wcn6855 {
-	__le32 rsvd0[8];
+	__le32 rsvd0[10];
 	__le32 info0;
-	__le32 rsvd1[14];
+	__le32 rsvd1[12];
 } __packed;
 
 #define HAL_RX_PPDU_END_DURATION	GENMASK(23, 0)
