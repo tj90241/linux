@@ -358,6 +358,19 @@ static int dp_display_send_hpd_notification(struct dp_display_private *dp,
 	return 0;
 }
 
+static void dp_display_lttpr_init(struct dp_display_private *dp)
+{
+	u8 lttpr_caps[DP_LTTPR_COMMON_CAP_SIZE];
+	int rc;
+
+	if (drm_dp_read_lttpr_common_caps(dp->aux, dp->panel->dpcd, lttpr_caps))
+		return;
+
+	rc = drm_dp_lttpr_init(dp->aux, drm_dp_lttpr_count(lttpr_caps));
+	if (rc)
+		DRM_ERROR("failed to set LTTPRs transparency mode, rc=%d\n", rc);
+}
+
 static int dp_display_process_hpd_high(struct dp_display_private *dp)
 {
 	struct drm_connector *connector = dp->dp_display.connector;
@@ -367,6 +380,8 @@ static int dp_display_process_hpd_high(struct dp_display_private *dp)
 	rc = dp_panel_read_sink_caps(dp->panel, connector);
 	if (rc)
 		goto end;
+
+	dp_display_lttpr_init(dp);
 
 	dp_link_process_request(dp->link);
 
