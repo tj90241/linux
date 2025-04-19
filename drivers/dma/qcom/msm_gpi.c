@@ -13,7 +13,6 @@
 #include <linux/iommu.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/ipc_logging.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -36,16 +35,10 @@
 #define GPI_LOG(gpi_dev, fmt, ...) do { \
 	if (gpi_dev->klog_lvl != LOG_LVL_MASK_ALL) \
 		dev_dbg(gpi_dev->dev, "%s: " fmt, __func__, ##__VA_ARGS__); \
-	if (gpi_dev->ilctxt && gpi_dev->ipc_log_lvl != LOG_LVL_MASK_ALL) \
-		ipc_log_string(gpi_dev->ilctxt, \
-			"%s: " fmt, __func__, ##__VA_ARGS__); \
 	} while (0)
 #define GPI_ERR(gpi_dev, fmt, ...) do { \
 	if (gpi_dev->klog_lvl >= LOG_LVL_ERROR) \
 		dev_err(gpi_dev->dev, "%s: " fmt, __func__, ##__VA_ARGS__); \
-	if (gpi_dev->ilctxt && gpi_dev->ipc_log_lvl >= LOG_LVL_ERROR) \
-		ipc_log_string(gpi_dev->ilctxt, \
-			"%s: " fmt, __func__, ##__VA_ARGS__); \
 	} while (0)
 
 /* gpii specific logging macros */
@@ -53,28 +46,16 @@
 	if (gpii->klog_lvl >= LOG_LVL_INFO) \
 		pr_info("%s:%u:%s: " fmt, gpii->label, ch, \
 			__func__, ##__VA_ARGS__); \
-	if (gpii->ilctxt && gpii->ipc_log_lvl >= LOG_LVL_INFO) \
-		ipc_log_string(gpii->ilctxt, \
-			       "ch:%u %s: " fmt, ch, \
-			       __func__, ##__VA_ARGS__); \
 	} while (0)
 #define GPII_ERR(gpii, ch, fmt, ...) do { \
 	if (gpii->klog_lvl >= LOG_LVL_ERROR) \
 		pr_err("%s:%u:%s: " fmt, gpii->label, ch, \
 		       __func__, ##__VA_ARGS__); \
-	if (gpii->ilctxt && gpii->ipc_log_lvl >= LOG_LVL_ERROR) \
-		ipc_log_string(gpii->ilctxt, \
-			       "ch:%u %s: " fmt, ch, \
-			       __func__, ##__VA_ARGS__); \
 	} while (0)
 #define GPII_CRITIC(gpii, ch, fmt, ...) do { \
 	if (gpii->klog_lvl >= LOG_LVL_CRITICAL) \
 		pr_err("%s:%u:%s: " fmt, gpii->label, ch, \
 		       __func__, ##__VA_ARGS__); \
-	if (gpii->ilctxt && gpii->ipc_log_lvl >= LOG_LVL_CRITICAL) \
-		ipc_log_string(gpii->ilctxt, \
-			       "ch:%u %s: " fmt, ch, \
-			       __func__, ##__VA_ARGS__); \
 	} while (0)
 
 enum DEBUG_LOG_LVL {
@@ -102,19 +83,11 @@ enum EV_PRIORITY {
 	if (gpii->klog_lvl >= LOG_LVL_REG_ACCESS) \
 		pr_info("%s:%u:%s: " fmt, gpii->label, \
 			ch, __func__, ##__VA_ARGS__); \
-	if (gpii->ilctxt && gpii->ipc_log_lvl >= LOG_LVL_REG_ACCESS) \
-		ipc_log_string(gpii->ilctxt, \
-			       "ch:%u %s: " fmt, ch, \
-			       __func__, ##__VA_ARGS__); \
 	} while (0)
 #define GPII_VERB(gpii, ch, fmt, ...) do { \
 	if (gpii->klog_lvl >= LOG_LVL_VERBOSE) \
 		pr_info("%s:%u:%s: " fmt, gpii->label, \
 			ch, __func__, ##__VA_ARGS__); \
-	if (gpii->ilctxt && gpii->ipc_log_lvl >= LOG_LVL_VERBOSE) \
-		ipc_log_string(gpii->ilctxt, \
-			       "ch:%u %s: " fmt, ch, \
-			       __func__, ##__VA_ARGS__); \
 	} while (0)
 
 #else
@@ -449,8 +422,6 @@ struct gpi_dev {
 	dma_addr_t iova_base;
 	size_t iova_size;
 	struct gpii *gpiis;
-	void *ilctxt;
-	u32 ipc_log_lvl;
 	u32 klog_lvl;
 	struct dentry *dentry;
 	bool is_le_vm;
@@ -583,8 +554,6 @@ struct gpii {
 	struct completion cmd_completion;
 	enum gpi_cmd gpi_cmd;
 	u32 cntxt_type_irq_msk;
-	void *ilctxt;
-	u32 ipc_log_lvl;
 	u32 klog_lvl;
 	struct gpi_dbg_log dbg_log[GPI_DBG_LOG_SIZE];
 	atomic_t dbg_index;
@@ -2964,16 +2933,11 @@ static void gpi_setup_debug(struct gpi_dev *gpi_dev)
 	snprintf(node_name, sizeof(node_name), "%s%llx", GPI_DMA_DRV_NAME,
 		 (u64)gpi_dev->res->start);
 
-	gpi_dev->ilctxt = ipc_log_context_create(IPC_LOG_PAGES,
-						 node_name, 0);
-	gpi_dev->ipc_log_lvl = DEFAULT_IPC_LOG_LVL;
 	if (!IS_ERR_OR_NULL(pdentry)) {
 		snprintf(node_name, sizeof(node_name), "%llx",
 			 (u64)gpi_dev->res->start);
 		gpi_dev->dentry = debugfs_create_dir(node_name, pdentry);
 		if (!IS_ERR_OR_NULL(gpi_dev->dentry)) {
-			debugfs_create_u32("ipc_log_lvl", mode, gpi_dev->dentry,
-					   &gpi_dev->ipc_log_lvl);
 			debugfs_create_u32("klog_lvl", mode,
 					   gpi_dev->dentry, &gpi_dev->klog_lvl);
 		}
@@ -2990,9 +2954,6 @@ static void gpi_setup_debug(struct gpi_dev *gpi_dev)
 		snprintf(gpii->label, sizeof(gpii->label),
 			 "%s%llx_gpii%d",
 			 GPI_DMA_DRV_NAME, (u64)gpi_dev->res->start, i);
-		gpii->ilctxt = ipc_log_context_create(IPC_LOG_PAGES,
-						      gpii->label, 0);
-		gpii->ipc_log_lvl = DEFAULT_IPC_LOG_LVL;
 		gpii->klog_lvl = DEFAULT_KLOG_LVL;
 
 		if (IS_ERR_OR_NULL(gpi_dev->dentry))
@@ -3003,8 +2964,6 @@ static void gpi_setup_debug(struct gpi_dev *gpi_dev)
 		if (IS_ERR_OR_NULL(gpii->dentry))
 			continue;
 
-		debugfs_create_u32("ipc_log_lvl", mode, gpii->dentry,
-				   &gpii->ipc_log_lvl);
 		debugfs_create_u32("klog_lvl", mode, gpii->dentry,
 				   &gpii->klog_lvl);
 	}
@@ -3215,7 +3174,7 @@ static int gpi_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int gpi_remove(struct platform_device *pdev)
+static void gpi_remove(struct platform_device *pdev)
 {
 	struct gpi_dev *gpi_dev = platform_get_drvdata(pdev);
 	int i;
@@ -3236,20 +3195,13 @@ static int gpi_remove(struct platform_device *pdev)
 
 			gpi_free_chan_resources(&gpii_chan->vc.chan);
 		}
-
-		if (gpii->ilctxt)
-			ipc_log_context_destroy(gpii->ilctxt);
 	}
 
 	for (i = 0; i < arr_idx; i++)
 		gpi_dev_dbg[i] = NULL;
 	arr_idx = 0;
 
-	if (gpi_dev->ilctxt)
-		ipc_log_context_destroy(gpi_dev->ilctxt);
-
 	debugfs_remove(pdentry);
-	return 0;
 }
 
 static const struct of_device_id gpi_of_match[] = {
