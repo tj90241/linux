@@ -63,7 +63,6 @@ if (print) { \
 #define SE_DMA_RX_ATTR			(0xD38)
 #define SE_DMA_RX_LEN			(0xD3C)
 #define SE_DMA_RX_IRQ_EN                (0xD48)
-#define SE_DMA_RX_LEN_IN                (0xD54)
 
 #define SE_DMA_TX_IRQ_EN_SET	(0xC4C)
 #define SE_DMA_TX_IRQ_EN_CLR	(0xC50)
@@ -404,7 +403,7 @@ static inline void test_bus_enable_per_qupv3(struct device *wrapper_dev, void *i
 	//TEST_BUS_EN:4, TEST_BUS_REG_EN:0
 	geni_write_reg(0x11, geni_se_dev->base, QUPV3_TEST_BUS_EN);
 	GENI_SE_ERR(ipc, false, geni_se_dev->dev,
-		    "%s: TEST_BUS_EN: 0x%x @address:0x%x\n",
+		    "%s: TEST_BUS_EN: 0x%x @address:0x%p\n",
 		    __func__, geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_EN),
 		    (geni_se_dev->base + QUPV3_TEST_BUS_EN));
 }
@@ -424,7 +423,7 @@ static inline void test_bus_select_per_qupv3(struct device *wrapper_dev, u8 test
 
 	geni_write_reg(test_bus_num, geni_se_dev->base, QUPV3_TEST_BUS_SEL);
 	GENI_SE_ERR(ipc, false, geni_se_dev->dev,
-		    "%s: readback TEST_BUS_SEL: 0x%x @address:0x%x\n",
+		    "%s: readback TEST_BUS_SEL: 0x%x @address:0x%p\n",
 		    __func__, geni_read_reg(geni_se_dev->base, QUPV3_TEST_BUS_SEL),
 		    (geni_se_dev->base + QUPV3_TEST_BUS_SEL));
 }

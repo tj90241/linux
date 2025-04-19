@@ -1774,7 +1774,7 @@ static void gpi_ev_tasklet(unsigned long data)
 }
 
 /* marks all pending events for the channel as stale */
-void gpi_mark_stale_events(struct gpii_chan *gpii_chan)
+static void gpi_mark_stale_events(struct gpii_chan *gpii_chan)
 {
 	struct gpii *gpii = gpii_chan->gpii;
 	struct gpi_ring *ev_ring = &gpii->ev_ring;
@@ -2189,7 +2189,7 @@ static void gpi_queue_xfer(struct gpii *gpii,
 }
 
 /* reset and restart transfer channel */
-int gpi_terminate_all(struct dma_chan *chan)
+static int gpi_terminate_all(struct dma_chan *chan)
 {
 	struct gpii_chan *gpii_chan = to_gpii_chan(chan);
 	struct gpii *gpii = gpii_chan->gpii;
@@ -2291,7 +2291,7 @@ static void gpi_noop_tre(struct gpii_chan *gpii_chan)
 	while (local_rp != local_wp) {
 		/* dump the channel ring at the time of error */
 		tre = (struct msm_gpi_tre *)cntxt_rp;
-		GPII_ERR(gpii, gpii_chan->chid, "local_rp:0x%011x TRE: %08x %08x %08x %08x\n",
+		GPII_ERR(gpii, gpii_chan->chid, "local_rp:0x%016llx TRE: %08x %08x %08x %08x\n",
 			local_rp, tre->dword[0], tre->dword[1],
 			 tre->dword[2], tre->dword[3]);
 		tre->dword[3] &= noop_mask;
@@ -2444,7 +2444,7 @@ static int gpi_resume(struct dma_chan *chan)
 	return 0;
 }
 
-void gpi_desc_free(struct virt_dma_desc *vd)
+static void gpi_desc_free(struct virt_dma_desc *vd)
 {
 	struct gpi_desc *gpi_desc = to_gpi_desc(vd);
 
@@ -2453,7 +2453,7 @@ void gpi_desc_free(struct virt_dma_desc *vd)
 }
 
 /* copy tre into transfer ring */
-struct dma_async_tx_descriptor *gpi_prep_slave_sg(struct dma_chan *chan,
+static struct dma_async_tx_descriptor *gpi_prep_slave_sg(struct dma_chan *chan,
 					struct scatterlist *sgl,
 					unsigned int sg_len,
 					enum dma_transfer_direction direction,
@@ -3205,7 +3205,7 @@ static void gpi_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id gpi_of_match[] = {
-	{ .compatible = "qcom,gpi-dma" },
+	{ .compatible = "qcom,x1e80100-gpi-dma" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, gpi_of_match);
