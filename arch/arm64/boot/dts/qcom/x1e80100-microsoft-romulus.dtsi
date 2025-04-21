@@ -1303,6 +1303,13 @@
 		drive-strength = <2>;
 		bias-disable;
 	};
+
+	qup_spi19_sleep: qup-spi19-sleep {
+		pins = "gpio76", "gpio77", "gpio78", "gpio79";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-disable;
+	};
 };
 
 &uart2 {
@@ -1419,4 +1426,32 @@
 	vdda-pll-supply = <&vreg_l3c>;
 
 	status = "okay";
+};
+
+&spi19 {
+	status = "okay";
+
+	reg-names = "se_phys";
+	interrupts = <GIC_SPI 843 IRQ_TYPE_LEVEL_HIGH>;
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&qup_spi19_data_clk>, <&qup_spi19_cs>;
+	pinctrl-1 = <&qup_spi19_sleep>;
+	spi-max-frequency = <20000000>;
+
+	hid@0 {
+		compatible = "hid-over-spi";
+		reg = <0>;
+		interrupts-extended = <&tlmm 30 IRQ_TYPE_EDGE_RISING>,
+				      <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
+
+		input-report-header-address = <0x1000>;
+		input-report-body-address = <0x1004>;
+		output-report-address = <0x2000>;
+		read-opcode = <0xeb>;
+		write-opcode = <0xe2>;
+
+		/* TODO: Verify 'em... derived from _PS0, _RST, respectively */
+		post-power-on-delay-ms = <0x1f4>;
+		minimal-reset-delay-ms = <0x12c>;
+	};
 };
