@@ -1437,6 +1437,47 @@
 		drive-strength = <2>;
 		bias-disable;
 	};
+
+	qup_spi19_sleep: qup-spi19-sleep {
+		pins = "gpio76", "gpio77", "gpio78", "gpio79";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-disable;
+	};
+
+	spi19_hid0_reset_deassert: spi19-hid0-reset-deassert {
+		pins = "gpio65";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
+
+	spi19_hid0_reset_assert: spi19-hid0-reset-assert {
+		pins = "gpio65";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	spi19_hid0_int_bias: spi19-hid0-int-bias {
+		pins = "gpio120";
+		function = "gpio";
+
+		input-enable;
+		bias-pull-up;
+	};
+
+	spi19_hid0_int_unbias: spi19-hid0-int-unbias {
+		pins = "gpio120";
+		function = "gpio";
+
+		input-enable;
+		bias-disable;
+	};
 };
 
 &uart2 {
@@ -1570,4 +1611,23 @@
 	vdda-pll-supply = <&vreg_l3c>;
 
 	status = "okay";
+};
+
+&spi19 {
+	spi-max-frequency = <20000000>;
+
+	status = "okay";
+
+	hid@0 {
+		compatible = "hid-over-spi";
+		reg = <0>;
+		interrupts-extended = <&tlmm 120 IRQ_TYPE_EDGE_RISING>;
+
+		pinctrl-names = "active", "sleep", "reset";
+		pinctrl-0 = <&spi19_hid0_reset_deassert &spi19_hid0_int_bias>;
+		pinctrl-1 = <&spi19_hid0_reset_assert &spi19_hid0_int_unbias>;
+		pinctrl-2 = <&spi19_hid0_reset_assert &spi19_hid0_int_bias>;
+
+		hid-descr-addr = <1>;
+	};
 };
