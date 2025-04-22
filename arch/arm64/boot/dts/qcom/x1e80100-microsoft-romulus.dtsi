@@ -1310,6 +1310,40 @@
 		drive-strength = <6>;
 		bias-disable;
 	};
+
+	spi19_hid0_reset_deassert: spi19-hid0-reset-deassert {
+		pins = "gpio65";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
+
+	spi19_hid0_reset_assert: spi19-hid0-reset-assert {
+		pins = "gpio65";
+		function = "gpio";
+
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	spi19_hid0_int_bias: spi19-hid0-int-bias {
+		pins = "gpio120";
+		function = "gpio";
+
+		input-enable;
+		bias-pull-up;
+	};
+
+	spi19_hid0_int_unbias: spi19-hid0-int-unbias {
+		pins = "gpio120";
+		function = "gpio";
+
+		input-enable;
+		bias-disable;
+	};
 };
 
 &uart2 {
@@ -1444,14 +1478,11 @@
 		interrupts-extended = <&tlmm 30 IRQ_TYPE_EDGE_RISING>,
 				      <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
 
-		input-report-header-address = <0x1000>;
-		input-report-body-address = <0x1004>;
-		output-report-address = <0x2000>;
-		read-opcode = <0xeb>;
-		write-opcode = <0xe2>;
+		pinctrl-names = "active", "sleep", "reset";
+		pinctrl-0 = <&spi19_hid0_reset_deassert &spi19_hid0_int_bias>;
+		pinctrl-1 = <&spi19_hid0_reset_assert &spi19_hid0_int_unbias>;
+		pinctrl-2 = <&spi19_hid0_reset_assert &spi19_hid0_int_bias>;
 
-		/* TODO: Verify 'em... derived from _PS0, _RST, respectively */
-		post-power-on-delay-ms = <0x1f4>;
-		minimal-reset-delay-ms = <0x12c>;
+		hid-descr-addr = <1>;
 	};
 };
