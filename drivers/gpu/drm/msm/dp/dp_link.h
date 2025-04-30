@@ -62,6 +62,7 @@ struct dp_link_phy_params {
 
 struct dp_link {
 	u8 lttpr_common_caps[DP_LTTPR_COMMON_CAP_SIZE];
+	int lttpr_count;
 
 	u32 sink_request;
 	u32 test_response;
