@@ -453,57 +453,11 @@ static void ssam_serial_hub_pm_complete(struct device *dev)
 
 static int ssam_serial_hub_pm_suspend(struct device *dev)
 {
-	struct ssam_controller *c = dev_get_drvdata(dev);
-	int status;
-
-	/*
-	 * Try to signal D0-exit, enable IRQ wakeup if specified. Abort on
-	 * error.
-	 */
-
-	status = ssam_ctrl_notif_d0_exit(c);
-	if (status) {
-		ssam_err(c, "pm: D0-exit notification failed: %d\n", status);
-		goto err_notif;
-	}
-
-	status = ssam_irq_arm_for_wakeup(c);
-	if (status)
-		goto err_irq;
-
-	WARN_ON(ssam_controller_suspend(c));
 	return 0;
-
-err_irq:
-	ssam_ctrl_notif_d0_entry(c);
-err_notif:
-	ssam_ctrl_notif_display_on(c);
-	return status;
 }
 
 static int ssam_serial_hub_pm_resume(struct device *dev)
 {
-	struct ssam_controller *c = dev_get_drvdata(dev);
-	int status;
-
-	WARN_ON(ssam_controller_resume(c));
-
-	/*
-	 * Try to disable IRQ wakeup (if specified) and signal D0-entry. In
-	 * case of errors, log them and try to restore normal operation state
-	 * as far as possible.
-	 *
-	 * Note: Signaling display-off/display-on should normally be done from
-	 * some sort of display state notifier. As that is not available,
-	 * signal it here.
-	 */
-
-	ssam_irq_disarm_wakeup(c);
-
-	status = ssam_ctrl_notif_d0_entry(c);
-	if (status)
-		ssam_err(c, "pm: D0-entry notification failed: %d\n", status);
-
 	return 0;
 }
 
