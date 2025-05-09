@@ -246,11 +246,16 @@ efi_status_t allocate_new_fdt_and_exit_boot(void *handle,
 	 * 'dtb=' unless UEFI Secure Boot is disabled.  We assume that secure
 	 * boot is enabled if we can't determine its state.
 	 */
+#if 0
 	if (!IS_ENABLED(CONFIG_EFI_ARMSTUB_DTB_LOADER) ||
 	    efi_get_secureboot() != efi_secureboot_mode_disabled) {
 		if (strstr(cmdline_ptr, "dtb="))
 			efi_err("Ignoring DTB from command line.\n");
 	} else {
+#else
+	if (IS_ENABLED(CONFIG_EFI_ARMSTUB_DTB_LOADER) &&
+	    strstr(cmdline_ptr, "dtb=")) {
+#endif
 		status = efi_load_dtb(image, &fdt_addr, &fdt_size);
 
 		if (status != EFI_SUCCESS && status != EFI_NOT_READY) {
