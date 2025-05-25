@@ -1639,6 +1639,7 @@ struct qmp_combo {
 	struct clk_hw dp_link_hw;
 	struct clk_hw dp_pixel_hw;
 
+	struct typec_mux_dev *mux;
 	struct typec_switch_dev *sw;
 	enum typec_orientation orientation;
 	unsigned long dp_com_phy_mode;
@@ -3421,6 +3422,34 @@ static int qmp_combo_register_clocks(struct qmp_combo *qmp, struct device_node *
 }
 
 #if IS_ENABLED(CONFIG_TYPEC)
+static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux,
+				   struct typec_mux_state *state)
+{
+	struct qmp_combo *qmp = typec_mux_get_drvdata(mux);
+	const struct qmp_phy_cfg *cfg = qmp->cfg;
+
+	if (state->mode == qmp->pin_assignment || state->mode == TYPEC_STATE_SAFE)
+		return 0;
+
+	mutex_lock(&qmp->phy_mutex);
+	qmp->pin_assignment = state->mode;
+
+	if (qmp->init_count) {
+		if (qmp->usb_init_count && qmp->dp_com_phy_mode & USB3_MODE)
+			qmp_combo_usb_power_off(qmp->usb_phy);
+		qmp_combo_com_exit(qmp, true);
+
+		qmp_combo_com_init(qmp, true);
+		if (qmp->usb_init_count && qmp->dp_com_phy_mode & USB3_MODE)
+			qmp_combo_usb_power_on(qmp->usb_phy);
+		if (qmp->dp_init_count)
+			cfg->dp_aux_init(qmp);
+	}
+	mutex_unlock(&qmp->phy_mutex);
+
+	return 0;
+}
+
 static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 				      enum typec_orientation orientation)
 {
@@ -3449,11 +3478,35 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	return 0;
 }
 
-static void qmp_combo_typec_unregister(void *data)
+static void qmp_combo_typec_mux_unregister(void *data)
+{
+	struct qmp_combo *qmp = data;
+
+	typec_mux_unregister(qmp->mux);
+}
+
+static void qmp_combo_typec_switch_unregister(void *data)
 {
 	struct qmp_combo *qmp = data;
 
 	typec_switch_unregister(qmp->sw);
+}
+
+static int qmp_combo_typec_mux_register(struct qmp_combo *qmp)
+{
+	struct typec_mux_desc mux_desc = {};
+	struct device *dev = qmp->dev;
+
+	mux_desc.drvdata = qmp;
+	mux_desc.fwnode = dev->fwnode;
+	mux_desc.set = qmp_combo_typec_mux_set;
+	qmp->mux = typec_mux_register(dev, &mux_desc);
+	if (IS_ERR(qmp->mux)) {
+		dev_err(dev, "Unable to register typec mux: %pe\n", qmp->mux);
+		return PTR_ERR(qmp->mux);
+	}
+
+	return devm_add_action_or_reset(dev, qmp_combo_typec_mux_unregister, qmp);
 }
 
 static int qmp_combo_typec_switch_register(struct qmp_combo *qmp)
@@ -3470,9 +3523,13 @@ static int qmp_combo_typec_switch_register(struct qmp_combo *qmp)
 		return PTR_ERR(qmp->sw);
 	}
 
-	return devm_add_action_or_reset(dev, qmp_combo_typec_unregister, qmp);
+	return devm_add_action_or_reset(dev, qmp_combo_typec_switch_unregister, qmp);
 }
 #else
+static int qmp_combo_typec_mux_register(struct qmp_combo *qmp)
+{
+	return 0;
+}
 static int qmp_combo_typec_switch_register(struct qmp_combo *qmp)
 {
 	return 0;
@@ -3704,6 +3761,10 @@ static int qmp_combo_probe(struct platform_device *pdev)
 
 		ret = qmp_combo_parse_dt(qmp);
 	}
+	if (ret)
+		goto err_node_put;
+
+	ret = qmp_combo_typec_mux_register(qmp);
 	if (ret)
 		goto err_node_put;
 
