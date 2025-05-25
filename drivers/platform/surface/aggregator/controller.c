@@ -1025,6 +1025,7 @@ enum ssh_dsm_fn {
 	SSH_DSM_FN_SSH_BUFFER_SIZE               = 0x09,
 };
 
+#ifdef CONFIG_ACPI
 static int ssam_dsm_get_functions(acpi_handle handle, u64 *funcs)
 {
 	union acpi_object *obj;
@@ -1041,6 +1042,7 @@ static int ssam_dsm_get_functions(acpi_handle handle, u64 *funcs)
 	 * If the _DSM is not present, indicate that no function is supported.
 	 * This will result in default values being set.
 	 */
+
 	if (!acpi_has_method(handle, "_DSM"))
 		return 0;
 
@@ -1083,6 +1085,7 @@ static int ssam_dsm_load_u32(acpi_handle handle, u64 funcs, u64 func, u32 *ret)
 	*ret = val;
 	return 0;
 }
+#endif
 
 /**
  * ssam_controller_caps_load_from_acpi() - Load controller capabilities from
@@ -1096,6 +1099,7 @@ static int ssam_dsm_load_u32(acpi_handle handle, u64 funcs, u64 func, u32 *ret)
  *
  * Return: Returns zero on success, a negative error code on failure.
  */
+#ifdef CONFIG_ACPI
 static
 int ssam_controller_caps_load_from_acpi(acpi_handle handle,
 					struct ssam_controller_caps *caps)
@@ -1141,6 +1145,7 @@ int ssam_controller_caps_load_from_acpi(acpi_handle handle,
 
 	return 0;
 }
+#endif
 
 /**
  * ssam_controller_caps_load_from_of() - Load controller capabilities from OF/DT.
@@ -1173,7 +1178,9 @@ static int ssam_controller_caps_load_from_of(struct device *dev, struct ssam_con
  */
 static int ssam_controller_caps_load(struct device *dev, struct ssam_controller_caps *caps)
 {
+#ifdef CONFIG_ACPI
 	acpi_handle handle = ACPI_HANDLE(dev);
+#endif
 
 	/* Set defaults. */
 	caps->ssh_power_profile = U32_MAX;
@@ -1182,10 +1189,14 @@ static int ssam_controller_caps_load(struct device *dev, struct ssam_controller_
 	caps->d3_closes_handle = false;
 	caps->ssh_buffer_size = U32_MAX;
 
+#ifdef CONFIG_ACPI
 	if (handle)
 		return ssam_controller_caps_load_from_acpi(handle, caps);
 	else
 		return ssam_controller_caps_load_from_of(dev, caps);
+#else
+	return ssam_controller_caps_load_from_of(dev, caps);
+#endif
 }
 
 /**

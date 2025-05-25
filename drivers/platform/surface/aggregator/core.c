@@ -303,7 +303,7 @@ static const struct attribute_group ssam_sam_group = {
 
 
 /* -- Serial device setup. -------------------------------------------------- */
-
+#ifdef CONFIG_ACPI
 static acpi_status ssam_serdev_setup_via_acpi_crs(struct acpi_resource *rsc,
 						  void *ctx)
 {
@@ -364,11 +364,14 @@ static int ssam_serdev_setup_via_acpi(struct serdev_device *serdev, acpi_handle 
 
 	return status ? -ENXIO : 0;
 }
+#endif
 
 static int ssam_serdev_setup(struct acpi_device *ssh, struct serdev_device *serdev)
 {
+#ifdef CONFIG_ACPI
 	if (ssh)
 		return ssam_serdev_setup_via_acpi(serdev, ssh->handle);
+#endif
 
 	/* TODO: these values may differ per board/implementation */
 	serdev_device_set_baudrate(serdev, 4 * HZ_PER_MHZ);
@@ -751,8 +754,10 @@ static int ssam_serial_hub_probe(struct serdev_device *serdev)
 					     "Failed to register the platform hub driver\n");
 	}
 
+#ifdef CONFIG_ACPI
 	if (ssh)
 		acpi_dev_clear_dependencies(ssh);
+#endif
 
 	return 0;
 
