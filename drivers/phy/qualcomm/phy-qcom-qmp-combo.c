@@ -3057,7 +3057,9 @@ static int __maybe_unused qmp_combo_runtime_suspend(struct device *dev)
 
 	qmp_combo_enable_autonomous_mode(qmp);
 
-	clk_disable_unprepare(qmp->pipe_clk);
+	if (qmp->dp_com_phy_mode & USB3_MODE)
+		clk_disable_unprepare(qmp->pipe_clk);
+
 	clk_bulk_disable_unprepare(qmp->num_clks, qmp->clks);
 
 	return 0;
@@ -3079,7 +3081,8 @@ static int __maybe_unused qmp_combo_runtime_resume(struct device *dev)
 	if (ret)
 		return ret;
 
-	ret = clk_prepare_enable(qmp->pipe_clk);
+	if (qmp->dp_com_phy_mode & USB3_MODE)
+		ret = clk_prepare_enable(qmp->pipe_clk);
 	if (ret) {
 		dev_err(dev, "pipe_clk enable failed, err=%d\n", ret);
 		clk_bulk_disable_unprepare(qmp->num_clks, qmp->clks);
@@ -3431,12 +3434,12 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	qmp->orientation = orientation;
 
 	if (qmp->init_count) {
-		if (qmp->usb_init_count)
+		if (qmp->usb_init_count && qmp->dp_com_phy_mode & USB3_MODE)
 			qmp_combo_usb_power_off(qmp->usb_phy);
 		qmp_combo_com_exit(qmp, true);
 
 		qmp_combo_com_init(qmp, true);
-		if (qmp->usb_init_count)
+		if (qmp->usb_init_count && qmp->dp_com_phy_mode & USB3_MODE)
 			qmp_combo_usb_power_on(qmp->usb_phy);
 		if (qmp->dp_init_count)
 			cfg->dp_aux_init(qmp);
