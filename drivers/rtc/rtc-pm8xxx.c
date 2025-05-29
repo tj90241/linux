@@ -683,10 +683,14 @@ static struct platform_driver pm8xxx_rtc_driver = {
 	},
 };
 
-module_platform_driver(pm8xxx_rtc_driver);
+static int __init pm8xxx_rtc_driver_init(void) {
+	return platform_driver_register(&pm8xxx_rtc_driver);
+}
+late_initcall(pm8xxx_rtc_driver_init);
 
 MODULE_ALIAS("platform:rtc-pm8xxx");
 MODULE_DESCRIPTION("PMIC8xxx RTC driver");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Anirudh Ghayal <aghayal@codeaurora.org>");
 MODULE_AUTHOR("Johan Hovold <johan@kernel.org>");
+MODULE_INFO(depends, "qcom_qseecom_uefisecapp");
